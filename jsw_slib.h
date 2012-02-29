@@ -4,9 +4,6 @@
 /*
   Classic skip list library
 
-    > Created (Julienne Walker): April 11, 2004
-    > Updated (Julienne Walker): August 19, 2005
-
   This code is in the public domain. Anyone may
   use it or change it in any way that they see
   fit. The author assumes no responsibility for 

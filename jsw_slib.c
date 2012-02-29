@@ -1,8 +1,6 @@
 /*
   Classic skip list library
 
-    > Created (Julienne Walker): April 11, 2004
-    > Updated (Julienne Walker): August 19, 2005
 */
 #include "jsw_rand.h"
 #include "jsw_slib.h"

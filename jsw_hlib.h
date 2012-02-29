@@ -4,19 +4,6 @@
 /*
   Hash table library using separate chaining
 
-    > Created (Julienne Walker): August 7, 2005
-    > Modified (Julienne Walker): August 11, 2005
-
-  This code is in the public domain. Anyone may
-  use it or change it in any way that they see
-  fit. The author assumes no responsibility for 
-  damages incurred through use of the original
-  code or any variations thereof.
-
-  It is requested, but not required, that due
-  credit is given to the original author and
-  anyone who has modified the code through
-  a header comment, such as this one.
 */
 #ifdef __cplusplus
 #include <cstddef>

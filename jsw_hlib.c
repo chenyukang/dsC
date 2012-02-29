@@ -1,10 +1,5 @@
 /*
   Hash table library using separate chaining
-
-    > Created (Julienne Walker): August 7, 2005
-    > Modified (Julienne Walker): August 11, 2005
-      Added a cast for malloc to enable clean
-      compilation as C++
 */
 #include "jsw_hlib.h"
 
