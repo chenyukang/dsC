@@ -12,8 +12,8 @@
 #include <assert.h>
 #include "bitmap.h"
 
-#define INDEX(a)  ((a)/(4*8))
-#define OFFSET(a) ((a)%(4*8))
+#define INDEX(a)  ((a)/(sizeof(u32)*8))
+#define OFFSET(a) ((a)%(sizeof(u32)*8))
 
 #define first_zerobit(x) (_first_onebit(~(x)))
 #define first_onebit(x)  (_first_onebit(x))
@@ -45,7 +45,8 @@ bitmap* bitmap_new(u32 size)
         cnt++;
     assert(cnt);
 
-    bm->cnt = cnt;
+    bm->size = size;
+    bm->cnt  = cnt;
     bm->table = (u32*)malloc(sizeof(u32) * cnt);
     if(bm->table == NULL) {
         free(bm);
@@ -73,7 +74,7 @@ void INIT(u32 val, u32* index, u32* offset)
 
 void bitmap_set(bitmap* bm, u32 val)
 {
-    assert(val>=0 && val <= bm->cnt &&
+    assert(val>=0 && val <= bm->size &&
            "val out of range");
     u32 index, offset;
     INIT(val, &index, &offset);
@@ -82,7 +83,7 @@ void bitmap_set(bitmap* bm, u32 val)
 
 void bitmap_clr(bitmap* bm, u32 val)
 {
-    assert(val>=0 && val <= bm->cnt &&
+    assert(val>=0 && val <= bm->size &&
            "val out of range");
     u32 index, offset;
     INIT(val, &index, &offset);
@@ -91,7 +92,7 @@ void bitmap_clr(bitmap* bm, u32 val)
 
 int bitmap_tst(bitmap* bm, u32 val)
 {
-    assert(val>=0 && val <= bm->cnt &&
+    assert(val>=0 && val <= bm->size &&
            "val out of range");
     u32 index, offset;
     INIT(val, &index, &offset);
@@ -125,5 +126,5 @@ u32 bitmap_first1(bitmap* bm)
         u32 v = bm->table[i];
         return 32*i + first_onebit(v) - 1;
     }
-    
+    return -1;
 }

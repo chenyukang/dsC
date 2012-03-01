@@ -13,6 +13,7 @@
 typedef unsigned int u32;
 
 typedef struct _bitmap{
+    u32 size;
     u32 cnt;
     u32* table;
 }bitmap;
