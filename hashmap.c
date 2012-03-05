@@ -1,9 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
-#include "HimaNDBPtrHash.h"
-#include "HimaNDBMemory.h"
-#include "HimaNDBInt.h"
 
 static void Hashtable_destruct(void* thz);
 
@@ -38,11 +35,11 @@ static bool hashtable_init(HimaNDB_PtrHash* thiz, int32_t hashsize)
     thiz->emptyidx=0;
     thiz->keysize=sizeof(void*);
 
-    thiz->hashlist=(hashitem*)HimaNDB_calloc(thiz->hashsize,sizeof(hashitem));
-    thiz->codelist=(int32_t*)HimaNDB_calloc(thiz->codesize,sizeof(int32_t));
+    thiz->hashlist=(hashitem*)calloc(thiz->hashsize,sizeof(hashitem));
+    thiz->codelist=(u32*)calloc(thiz->codesize,sizeof(u32));
     if(thiz->hashlist==NULL||thiz->codelist==NULL){//acording C99, free(NULL) do nothing
-        HimaNDB_free(thiz->hashlist);
-        HimaNDB_free(thiz->codelist);
+        free(thiz->hashlist);
+        free(thiz->codelist);
         return false;
     }
 

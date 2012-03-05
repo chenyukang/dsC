@@ -113,7 +113,7 @@ u32 bitmap_first0(bitmap* bm)
     }
     return -1; 
 }
-
+ 
 /* the index of first 1,
    return -1 means no 1 bit */
 u32 bitmap_first1(bitmap* bm)
