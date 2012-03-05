@@ -35,7 +35,7 @@ static bool hashtable_init(HimaNDB_PtrHash* thiz, int32_t hashsize)
     thiz->codesize=HASH_OPTIMAL_RATE*hashsize;
 
     thiz->count=0;
-    thiz->emptyindex=0;
+    thiz->emptyidx=0;
     thiz->keysize=sizeof(void*);
 
     thiz->hashlist=(hashitem*)HimaNDB_calloc(thiz->hashsize,sizeof(hashitem));
@@ -71,11 +71,11 @@ static bool internal_add(void* thz, void* key, void* value)
     index = get_code(key, thiz->codesize, thiz->keysize);
 
     if(thiz->codelist[index] == -1){
-        empty = thiz->emptyindex;
+        empty = thiz->emptyidx;
         thiz->hashlist[empty].key = key;
         thiz->hashlist[empty].value = value;
-        thiz->codelist[index] = thiz->emptyindex;
-        thiz->emptyindex = thiz->hashlist[empty].next;
+        thiz->codelist[index] = thiz->emptyidx;
+        thiz->emptyidx = thiz->hashlist[empty].next;
         thiz->hashlist[empty].next = -1;
         return true;
     }
@@ -88,12 +88,12 @@ static bool internal_add(void* thz, void* key, void* value)
             return false;
         
         if(thiz->hashlist[index].next == -1){
-            empty = thiz->emptyindex;
+            empty = thiz->emptyidx;
             
             thiz->hashlist[empty].key=key;
             thiz->hashlist[empty].value=value;
             thiz->hashlist[index].next=empty;
-            thiz->emptyindex = thiz->hashlist[empty].next;
+            thiz->emptyidx = thiz->hashlist[empty].next;
             thiz->hashlist[empty].next=-1;
             return true;
         }
@@ -106,120 +106,92 @@ static bool internal_add(void* thz, void* key, void* value)
    return true success,
    return false iff error happened
 */
-static bool check_full(void* thz)
+static bool check_full(hsmap* hsmap)
 {
-    HimaNDB_PtrHash* thiz = (HimaNDB_PtrHash*)thz;
+    if(hsmap->count < hsmap->hashsize) return true;
 
-    if(thiz->count < thiz->hashsize) return true;
+    hashmap* new_hash = hsmap_new();
+    u32 n,step,cnt;
 
-    HimaNDB_PtrHash new_hash;
-    int32_t n,step,cnt;
-
-    step = (thiz->count)*HASH_STEP_RATE;
+    step = (hsmap->count)*HASH_STEP_RATE;
     step = step<HASH_STEP_MIN ? HASH_STEP_MIN :
           (step>HASH_STEP_MAX ? HASH_STEP_MAX:step);
 
-    new_hash.hashsize = thiz->hashsize + step;
+    new_hash.hashsize = hsmap->hashsize + step;
     hashtable_init(&new_hash, new_hash.hashsize);
 
     cnt = 0;
-    for(n=0; n<thiz->hashsize; n++){
-        if(thiz->hashlist[n].key == NULL) continue;
+    for(n=0; n<hsmap->hashsize; n++){
+        if(hsmap->hashlist[n].key == NULL) continue;
 
-        if(!internal_add(&new_hash, thiz->hashlist[n].key,
-                         thiz->hashlist[n].value)){
-            Hashtable_destruct(&new_hash);
+        if(!internal_add(&new_hash, hsmap->hashlist[n].key,
+                         hsmap->hashlist[n].value)){
+            hsmap_del(new_hash);
             return false;
         }
         new_hash.count++;
     }
-    Hashtable_destruct(thiz);
-
-    thiz->hashlist = new_hash.hashlist;
-    thiz->codelist = new_hash.codelist;
-    thiz->count    = new_hash.count;
-    thiz->emptyindex = new_hash.emptyindex;
-    thiz->hashsize = new_hash.hashsize;
-    thiz->codesize = new_hash.codesize;
+    free(hsmap->hashlist);
+    free(hsmap->codelist);
+    
+    hsmap->hashlist = new_hash.hashlist;
+    hsmap->codelist = new_hash.codelist;
+    hsmap->count    = new_hash.count;
+    hsmap->emptyidx = new_hash.emptyidx;
+    hsmap->hashsize = new_hash.hashsize;
+    hsmap->codesize = new_hash.codesize;
 
     return true;
 }
 
 
-
-static void Hashtable_destruct(void* thz)
+void hsmap_del(hashmap* hsmap)
 {
-    HimaNDB_PtrHash* thiz = thz;
-    if(thiz->hashlist != NULL)
-        HimaNDB_free(thiz->hashlist);
-    if(thiz->codelist != NULL)
-        HimaNDB_free(thiz->codelist);
+    if(hsmap == NULL) return;
+    free(thiz->hashlist);
+    free(this->codelist);
+    free(hsmap);
+    hsmap = NULL;
 }
 
-static void Hashtable_insert(HimaNDB_PtrHash* thz, void* key, void* value)
+/* return 0 means no add
+   return 1 means add success */
+int hsmap_insert(hashmap* hsmap, void* key, void* value)
 {
-    HimaNDB_PtrHash* thiz = thz;
-    if(!check_full(thiz)) return;
-
-    if(internal_add(thiz, key, value))
-        thiz->count++;
+    if(!check_full(hsmap))
+        return 0;
+    if(internal_add(hsmap, key, value))
+        hsmap->count++;
+    return 1;
 }
 
-/* key --> HimaNDB_Vector */
-/* return : a vector list of ptrs , assosciated by key */
-static HimaNDB_Vector* Hashtable_find(HimaNDB_PtrHash* thz, void* key)
+void* hsmap_find(hashmap* hsmap, void* key)
 {
-    HimaNDB_PtrHash* thiz = thz;
-    assert(thiz!=0);
-    HimaNDB_Vector* res = HimaNDB_createVector(0);
+    assert(hsmap);
+    u32 index = get_code(key, hsmap->codesize, hsmap->keysize);
+    assert( index >= 0 );
+    if( hsmap->codelist[index] == -1)
+        return NULL;
 
-    int32_t index;
-    index = get_code(key, thiz->codesize, thiz->keysize);
-    assert(index>=0);
-    
-    if(thiz->codelist[index] == -1)
-        return res;
-
-    index = thiz->codelist[index];
-    while( index < thiz->hashsize )
-    {
-        assert(index < thiz->hashsize && "hash find: index < hashsize");
-        if(thiz->hashlist[index].key == key)//add to hash
-        {
-            //acording to C99: void* and intptr_t can be convert vice and versa.
-            HimaNDB_Int* value = HimaNDB_createInt((intptr_t)(thiz->hashlist[index].value));
-            res->methods->pushBack(res, value);
-            HimaNDB_xfreeRef(value);
+    index = hsmap->codelist[index];
+    while( index < hsmap->hashsize ) {
+        assert(index < hsmap->hashsize
+               && "hash find: index < hashsize");
+        if(hsmap->hashlist[index].key == key) {
+            return hsmap->hashlist[index].value;
         }
-        if(thiz->hashlist[index].next == -1)
+        if(hsmap->hashlist[index].next == -1)
             break;
-        index = thiz->hashlist[index].next;
+        index = hsmap->hashlist[index].next;
     }
-    return res;
+    return NULL;
 }
-            
-                   
 
-
-HimaNDB_PtrHash* HimaNDB_createPtrHash()
+hashmap* hsmap_new()
 {
-    HimaNDB_PtrHash* res = (HimaNDB_PtrHash*)HimaNDB_malloc(sizeof(HimaNDB_PtrHash));
-    res->methods = &HimaNDB_Type_ptrHash;
-    res->hashsize = 10;
-    res->refCnt = 1;
-    hashtable_init(res, res->hashsize);
+    hashmap* hsmap = (hashmap*)malloc(sizeof(hashmap));
+    assert(hsmap);
+    hsmap->hashsize = 10;
+    hashtable_init(hsmap, hsmap->hashsize);
     return res;
 }
-
-extern const HimaNDB_Type_Object HimaNDB_Type_object;
-
-const HimaNDB_Type_PtrHash HimaNDB_Type_ptrHash = {
-    "PtrHash",
-    &HimaNDB_Type_object,
-    Hashtable_destruct,
-    NULL, /* hash */
-    NULL, /* equals */
-    Hashtable_insert,
-    Hashtable_find,
-};
-
