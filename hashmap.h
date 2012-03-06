@@ -22,24 +22,40 @@
 
 typedef unsigned int u32;
 
+typedef unsigned (*hash_f) (const void* key);
+typedef int      (*cmp_f)  (const void* a, const void* b);
+typedef void*    (*keydup_f) (const void* key);
+typedef void*    (*valdup_f) (const void* val);
+typedef void*    (*keyrel_f) (const void* key);
+typedef void*    (*valrel_f) (const void* val);
+
 typedef struct {
     void* key;
-    void* value;
-    int next;
+    void* val;
+    u32 next;
 }hashitem;
 
 
 typedef struct {
     u32 hashsize;
     u32 codesize;
-    u32 keysize;
     u32 count;
     u32 emptyidx;
     u32* codelist;
-    item* hashlist;
+    hashitem* hashlist;
+
+    hash_f hash;
+    cmp_f  cmp;
+
+    keydup_f keydup;
+    valdup_f valdup;
+    keyrel_f keyrel;
+    valrel_f valrel;
 }hashmap;
 
-hashmap* hsmap_new(u32 size);
-
+hashmap* hsmap_new(u32 size, hash_f hash, cmp_f cmp,
+                   keydup_f keydup, valdup_f valdup,
+                   keyrel_f keyrel, valrel_f valrel);
+void hsmap_del(hashmap* hsmap);
 #endif
 
