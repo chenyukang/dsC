@@ -15,8 +15,8 @@
 #define INDEX(a)  ((a)/(sizeof(u32)*8))
 #define OFFSET(a) ((a)%(sizeof(u32)*8))
 
-#define first_zerobit(x) (_first_onebit(~(x)))
-#define first_onebit(x)  (_first_onebit(x))
+#define first_bit0(x) (_first_onebit(~(x)))
+#define first_bit1(x)  (_first_onebit(x))
 
 /* ffs: if ret == 0 : no one bit found
    return index is begin with 1,
@@ -109,11 +109,12 @@ u32 bitmap_first0(bitmap* bm)
         if( bm->table[i] == 0xFFFFFFFF ) //full
             continue;
         u32 v = bm->table[i];
-        return 32*i + first_zerobit(v) - 1;
+
+        return 32*i + first_bit0(v) - 1;
     }
     return -1; 
 }
- 
+
 /* the index of first 1,
    return -1 means no 1 bit */
 u32 bitmap_first1(bitmap* bm)
@@ -124,7 +125,7 @@ u32 bitmap_first1(bitmap* bm)
         if( bm->table[i] == 0x0 ) //empty
             continue;
         u32 v = bm->table[i];
-        return 32*i + first_onebit(v) - 1;
+        return 32*i + first_bit1(v) - 1;
     }
     return -1;
 }
