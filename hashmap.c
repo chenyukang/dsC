@@ -109,7 +109,6 @@ check_full(hashmap* hsmap)
     if(hsmap->count < hsmap->hashsize-1 )
         return 1;
 
-
     u32 n, step;
     hashmap* new_hash = (hashmap*)malloc(sizeof(hashmap));
     assert(hsmap);
