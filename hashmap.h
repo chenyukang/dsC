@@ -26,8 +26,8 @@ typedef unsigned (*hash_f) (const void* key);
 typedef int      (*cmp_f)  (const void* a, const void* b);
 typedef void*    (*keydup_f) (const void* key);
 typedef void*    (*valdup_f) (const void* val);
-typedef void*    (*keyrel_f) (const void* key);
-typedef void*    (*valrel_f) (const void* val);
+typedef void     (*keyrel_f) (const void* key);
+typedef void     (*valrel_f) (const void* val);
 
 typedef struct {
     void* key;
@@ -53,9 +53,13 @@ typedef struct {
     valrel_f valrel;
 }hashmap;
 
-hashmap* hsmap_new(u32 size, hash_f hash, cmp_f cmp,
+hashmap* hsmap_new(hash_f hash, cmp_f cmp,
                    keydup_f keydup, valdup_f valdup,
                    keyrel_f keyrel, valrel_f valrel);
 void hsmap_del(hashmap* hsmap);
+
+int   hsmap_insert(hashmap* hsmap, void* key, void* val);
+void* hsmap_find(hashmap* hsmap, void* key);
+
 #endif
 
