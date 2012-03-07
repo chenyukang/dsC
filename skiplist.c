@@ -7,7 +7,7 @@
  *
  *      @author   Yukang Chen  @date  2012-02-24 14:31:24
  *
- *      COPYRIGHT (C) 2011, Nextop INC., ALL RIGHTS RESERVED.
+ *      COPYRIGHT (C) 2012 , ALL RIGHTS RESERVED.
  *
  *******************************************************************************/
 #ifdef __cplusplus

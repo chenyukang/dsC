@@ -12,56 +12,50 @@ using std::free;
 #include <stdlib.h>
 #endif
 
-typedef struct jsw_node {
+typedef struct _node {
   void            *key;  /* Key used for searching */
-  void            *item; /* Actual content of a node */
-  struct jsw_node *next; /* Next link in the chain */
-} jsw_node_t;
+  void            *val; /* Actual content of a node */
+  struct _node *next; /* Next link in the chain */
+} hs_node;
 
-typedef struct jsw_head {
-  jsw_node_t *first;     /* First link in the chain */
+typedef struct _head {
+  hs_node*    first;     /* First link in the chain */
   size_t      size;      /* Length of the chain */
-} jsw_head_t;
+} hs_head;
 
-struct jsw_hash {
-  jsw_head_t **table;    /* Dynamic chained hash table */
+typedef struct _hash {
+  hs_head     **table;    /* Dynamic chained hash table */
   size_t       size;     /* Current item count */
   size_t       capacity; /* Current table size */
   size_t       curri;    /* Current index for traversal */
-  jsw_node_t  *currl;    /* Current link for traversal */
+  hs_node     *currl;    /* Current link for traversal */
   hash_f       hash;     /* User defined key hash function */
   cmp_f        cmp;      /* User defined key comparison function */
   keydup_f     keydup;   /* User defined key copy function */
-  itemdup_f    itemdup;  /* User defined item copy function */
+  valdup_f     valdup;  /* User defined val copy function */
   keyrel_f     keyrel;   /* User defined key delete function */
-  itemrel_f    itemrel;  /* User defined item delete function */
-};
+  valrel_f     valrel;  /* User defined val delete function */
+}hs_table;
 
-static jsw_node_t *new_node ( void *key, void *item, jsw_node_t *next )
+static hs_node*
+new_node(void* key, void* item, hs_node* next)
 {
-  jsw_node_t *node = (jsw_node_t *)malloc ( sizeof *node );
-
-  if ( node == NULL )
-    return NULL;
-
-  node->key = key;
-  node->item = item;
-  node->next = next;
-
-  return node;
+    hs_node* node = (hs_node*)malloc(sizeof(hs_node));
+    assert(node);
+    node->key = key;
+    node->val = val;
+    node->next = next;
+    return node;
 }
 
-static jsw_head_t *new_chain ( void )
+static hs_head*
+new_chain()
 {
-  jsw_head_t *chain = (jsw_head_t *)malloc ( sizeof *chain );
-
-  if ( chain == NULL )
-    return NULL;
-
-  chain->first = NULL;
-  chain->size = 0;
-
-  return chain;
+    hs_head* chain = (hs_head*)malloc(sizeof(hs_head));
+    assert(chain);
+    chain->first = NULL;
+    chain->size  = 0;
+    return chain;
 }
 
 /*
@@ -70,26 +64,20 @@ static jsw_head_t *new_chain ( void )
 
   Returns: An empty hash table, or NULL on failure.
 */
-jsw_hash_t  *jsw_hnew ( size_t size, hash_f hash, cmp_f cmp,
-  keydup_f keydup, itemdup_f itemdup,
-  keyrel_f keyrel, itemrel_f itemrel )
+
+hs_table*
+hstab_new(size_t size, hash_f hash, cmp_f cmp,
+          keydup_f keydup, valdup_f valdup,
+          keyrel_f keyrel, valrel_f valrel )
 {
-  jsw_hash_t *htab = (jsw_hash_t *)malloc ( sizeof *htab );
-  size_t i;
+    size_t i;
+    hs_table* hstab = (hs_table*)malloc(sizeof(hs_table));
 
-  if ( htab == NULL )
-    return NULL;
-
-  htab->table = (jsw_head_t **)malloc ( size * sizeof *htab->table );
-
-  if ( htab->table == NULL ) {
-    free ( htab );
-    return NULL;
-  }
-
-  /* Empty chains have no head */
-  for ( i = 0; i < size; i++ )
-    htab->table[i] = NULL;
+    if( hstab == NULL )
+        return NULL;
+    hstab->table = (hs_head**)malloc(sizeof(hs_head*) * size);
+    assert(hstab->table);
+    memset(hstab->table, 0, sizeof(hstab->table[0]) * size);
 
   htab->size = 0;
   htab->capacity = size;
@@ -98,61 +86,50 @@ jsw_hash_t  *jsw_hnew ( size_t size, hash_f hash, cmp_f cmp,
   htab->hash = hash;
   htab->cmp = cmp;
   htab->keydup = keydup;
-  htab->itemdup = itemdup;
+  htab->valdup = valdup;
   htab->keyrel = keyrel;
-  htab->itemrel = itemrel;
-
+  htab->valrel = valrel;
   return htab;
 }
 
 /* Release all memory used by the hash table */
-void jsw_hdelete ( jsw_hash_t *htab )
+void
+hs_delete(hs_table* hstab)
 {
-  size_t i;
-
-  /* Release each chain individually */
-  for ( i = 0; i < htab->capacity; i++ ) {
-    jsw_node_t *save, *it;
-
-    if ( htab->table[i] == NULL )
-      continue;
-
-    it = htab->table[i]->first;
-
-    for ( ; it != NULL; it = save ) {
-      save = it->next;
-      htab->keyrel ( it->key );
-      htab->itemrel ( it->item );
-      free ( it );
+    size_t i;
+    hs_node *prev, *it;
+    for(i=0; i<hstab->capacity; i++) {
+        if( hstab->table[i] == NULL )
+            continue;
+        it = hstab->table[i]->first;
+        while( it ) {
+            next = it->next;
+            hstab->keyrel(it->key);
+            hstab->valrel(it->val);
+            free(it);
+            it = next;
+        }
+        free(hstab->table[i]);
     }
-
-    free ( htab->table[i] );
-  }
-
-  /* Release the hash table */
-  free ( htab->table );
-  free ( htab );
+    free( hstab->table );
+    free(hstab);
 }
-
 /*
   Find an item with the selected key
 
   Returns: The item, or NULL if not found
 */
-void *jsw_hfind ( jsw_hash_t *htab, void *key )
+void*
+hs_find (hs_table* hstab, void *key )
 {
-  unsigned h = htab->hash ( key ) % htab->capacity;
-
-  /* Search the chain only if it exists */
-  if ( htab->table[h] != NULL ) {
-    jsw_node_t *it = htab->table[h]->first;
-
+  unsigned h = hstab->hash(key) % hstab->capacity;
+  if ( hstab->table[h] != NULL ) {
+    hs_node *it = hstab->table[h]->first;
     for ( ; it != NULL; it = it->next ) {
-      if ( htab->cmp ( key, it->key ) == 0 )
+      if ( hstab->cmp ( key, it->key ) == 0 )
         return it->item;
     }
   }
-
   return NULL;
 }
 
@@ -161,44 +138,43 @@ void *jsw_hfind ( jsw_hash_t *htab, void *key )
 
   Returns: non-zero for success, zero for failure
 */
-int jsw_hinsert ( jsw_hash_t *htab, void *key, void *item )
+int jsw_hinsert (hs_table* hstab, void* key, void* val)
 {
-  unsigned h = htab->hash ( key ) % htab->capacity;
-  void *dupkey, *dupitem;
-  jsw_node_t *new_item;
-
-  /* Disallow duplicate keys */
-  if ( jsw_hfind ( htab, key ) != NULL )
-    return 0;
-
+  unsigned h = hstab->hash ( key ) % hstab->capacity;
+  hs_node* new_node;
+  void* val;
+  
+  if( ( val = hs_find( hstab, key )) != NULL) {
+      hstab->valrel(val);
+      val = hstab->valdup(val);
+      return 1;
+  }
   /* Attempt to create a new item */
-  dupkey = htab->keydup ( key );
-  dupitem = htab->itemdup ( item );
+  dupkey = hstab->keydup ( key );
+  dupval = hstab->valdup ( val );
 
-  new_item = new_node ( dupkey, dupitem, NULL );
+  new_node = new_node ( dupkey, dupval, NULL );
 
   if ( new_item == NULL )
     return 0;
 
   /* Create a chain if the bucket is empty */
-  if ( htab->table[h] == NULL ) {
-    htab->table[h] = new_chain();
-
-    if ( htab->table[h] == NULL ) {
-      htab->keyrel ( new_item->key );
-      htab->itemrel ( new_item->item );
-      free ( new_item );
+  if ( hstab->table[h] == NULL ) {
+    hstab->table[h] = new_chain();
+    if ( hstab->table[h] == NULL ) {
+      hstab->keyrel ( new_node->key );
+      hstab->valrel ( new_node->val );
+      free ( new_node );
       return 0;
     }
   }
 
   /* Insert at the front of the chain */
-  new_item->next = htab->table[h]->first;
-  htab->table[h]->first = new_item;
+  new_node->next = hstab->table[h]->first;
+  hstab->table[h]->first = new_node;
 
-  ++htab->table[h]->size;
-  ++htab->size;
-
+  ++hstab->table[h]->size;
+  ++hstab->size;
   return 1;
 }
 

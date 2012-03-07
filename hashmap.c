@@ -193,24 +193,24 @@ hsmap_insert(hashmap* hsmap, void* key, void* value)
 void* hsmap_find(hashmap* hsmap, void* key)
 {
     assert(hsmap);
-    u32 index = hsmap->hash(key) % (hsmap->codesize -1 ) + 1;
+    u32 idx = hsmap->hash(key) % (hsmap->codesize -1 ) + 1;
     
-    assert( index >= 0 );
-    if( hsmap->codelist[index] == 0)
+    assert( idx >= 0 );
+    if( hsmap->codelist[idx] == 0)
         return NULL;
 
-    index = hsmap->codelist[index];
-    while( index < hsmap->hashsize ) {
-        assert(index < hsmap->hashsize
-               && "hash find: index <= hashsize");
+    idx = hsmap->codelist[idx];
+    while( idx < hsmap->hashsize ) {
+        assert(idx < hsmap->hashsize
+               && "hash find: idx <= hashsize");
         
-        if( hsmap->cmp(hsmap->hashlist[index].key,
+        if( hsmap->cmp(hsmap->hashlist[idx].key,
                        key) == 0 ) {
-            return hsmap->hashlist[index].val;
+            return hsmap->hashlist[idx].val;
         }
-        if( hsmap->hashlist[index].next == 0 )
+        if( hsmap->hashlist[idx].next == 0 )
             break;
-        index = hsmap->hashlist[index].next;
+        idx = hsmap->hashlist[idx].next;
     }
     return NULL;
 }
