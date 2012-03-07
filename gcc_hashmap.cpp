@@ -24,7 +24,7 @@ int main(){
     map<int ,int> my_map;
     for(k=0; k<1000000; k++)
     {
-        int val = k+1;
+        int val = k+1; 
         //printf("insert1 : %d val:%d\n", k, val);
         my_map.insert(make_pair(k, val));
         int ret = my_map[k];
