@@ -127,7 +127,7 @@ check_full(hashmap* hsmap)
 
     new_hash->hashsize = hsmap->hashsize + step;
     hashtable_init(new_hash, new_hash->hashsize);
-    printf("expand: %d, hsmap->hashsize: %d\n", ++expand_cnt, new_hash->hashsize);
+    //printf("expand: %d, hsmap->hashsize: %d\n", ++expand_cnt, new_hash->hashsize);
     
     for(n=1; n<hsmap->hashsize; n++){
         if(hsmap->hashlist[n].key == NULL)
