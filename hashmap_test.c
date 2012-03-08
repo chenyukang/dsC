@@ -71,7 +71,7 @@ int main()
 
     assert(hsmap);
     int k;
-    for(k=0; k<1000000; k++)
+    for(k=0; k<100000; k++)
     {
         int val = k+1;
         hsmap_insert(hsmap, &k, &val);
