@@ -1,8 +1,11 @@
 /*
   Hash table library using separate chaining
 */
-#include "jsw_hlib.h"
+#include "chainhash.h"
 
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
 #ifdef __cplusplus
 #include <cstdlib>
 
@@ -23,7 +26,7 @@ typedef struct _head {
   size_t      size;      /* Length of the chain */
 } hs_head;
 
-typedef struct _hash {
+struct _hash_table {
   hs_head     **table;    /* Dynamic chained hash table */
   size_t       size;     /* Current item count */
   size_t       capacity; /* Current table size */
@@ -35,10 +38,10 @@ typedef struct _hash {
   valdup_f     valdup;  /* User defined val copy function */
   keyrel_f     keyrel;   /* User defined key delete function */
   valrel_f     valrel;  /* User defined val delete function */
-}hs_table;
+};
 
 static hs_node*
-new_node(void* key, void* item, hs_node* next)
+new_node(void* key, void* val, hs_node* next)
 {
     hs_node* node = (hs_node*)malloc(sizeof(hs_node));
     assert(node);
@@ -66,7 +69,7 @@ new_chain()
 */
 
 hs_table*
-hstab_new(size_t size, hash_f hash, cmp_f cmp,
+hs_new(size_t size, hash_f hash, cmp_f cmp,
           keydup_f keydup, valdup_f valdup,
           keyrel_f keyrel, valrel_f valrel )
 {
@@ -79,17 +82,17 @@ hstab_new(size_t size, hash_f hash, cmp_f cmp,
     assert(hstab->table);
     memset(hstab->table, 0, sizeof(hstab->table[0]) * size);
 
-  htab->size = 0;
-  htab->capacity = size;
-  htab->curri = 0;
-  htab->currl = NULL;
-  htab->hash = hash;
-  htab->cmp = cmp;
-  htab->keydup = keydup;
-  htab->valdup = valdup;
-  htab->keyrel = keyrel;
-  htab->valrel = valrel;
-  return htab;
+  hstab->size = 0;
+  hstab->capacity = size;
+  hstab->curri = 0;
+  hstab->currl = NULL;
+  hstab->hash = hash;
+  hstab->cmp = cmp;
+  hstab->keydup = keydup;
+  hstab->valdup = valdup;
+  hstab->keyrel = keyrel;
+  hstab->valrel = valrel;
+  return hstab;
 }
 
 /* Release all memory used by the hash table */
@@ -97,7 +100,7 @@ void
 hs_delete(hs_table* hstab)
 {
     size_t i;
-    hs_node *prev, *it;
+    hs_node *next, *it;
     for(i=0; i<hstab->capacity; i++) {
         if( hstab->table[i] == NULL )
             continue;
@@ -127,7 +130,7 @@ hs_find (hs_table* hstab, void *key )
     hs_node *it = hstab->table[h]->first;
     for ( ; it != NULL; it = it->next ) {
       if ( hstab->cmp ( key, it->key ) == 0 )
-        return it->item;
+        return it->val;
     }
   }
   return NULL;
@@ -138,40 +141,42 @@ hs_find (hs_table* hstab, void *key )
 
   Returns: non-zero for success, zero for failure
 */
-int jsw_hinsert (hs_table* hstab, void* key, void* val)
+int hs_insert (hs_table* hstab, void* key, void* val)
 {
   unsigned h = hstab->hash ( key ) % hstab->capacity;
-  hs_node* new_node;
-  void* val;
+  hs_node* new;
+  void* dupkey;
+  void* dupval;
+  void* prev_val;
   
-  if( ( val = hs_find( hstab, key )) != NULL) {
-      hstab->valrel(val);
-      val = hstab->valdup(val);
+  if( ( prev_val = hs_find( hstab, key )) != NULL) {
+      hstab->valrel(prev_val);
+      prev_val = hstab->valdup(val);
       return 1;
   }
   /* Attempt to create a new item */
   dupkey = hstab->keydup ( key );
   dupval = hstab->valdup ( val );
 
-  new_node = new_node ( dupkey, dupval, NULL );
+  new = new_node ( dupkey, dupval, NULL );
 
-  if ( new_item == NULL )
+  if ( new == NULL )
     return 0;
 
   /* Create a chain if the bucket is empty */
   if ( hstab->table[h] == NULL ) {
     hstab->table[h] = new_chain();
     if ( hstab->table[h] == NULL ) {
-      hstab->keyrel ( new_node->key );
-      hstab->valrel ( new_node->val );
-      free ( new_node );
+      hstab->keyrel ( new->key );
+      hstab->valrel ( new->val );
+      free ( new );
       return 0;
     }
   }
 
   /* Insert at the front of the chain */
-  new_node->next = hstab->table[h]->first;
-  hstab->table[h]->first = new_node;
+  new->next = hstab->table[h]->first;
+  hstab->table[h]->first = new;
 
   ++hstab->table[h]->size;
   ++hstab->size;
@@ -183,37 +188,35 @@ int jsw_hinsert (hs_table* hstab, void* key, void* val)
 
   Returns: non-zero for success, zero for failure
 */
-int jsw_herase ( jsw_hash_t *htab, void *key )
+int hs_erase (hs_table* hstab, void *key )
 {
-  unsigned h = htab->hash ( key ) % htab->capacity;
-  jsw_node_t *save, *it;
+  unsigned h = hstab->hash ( key ) % hstab->capacity;
+  hs_node *save, *it;
 
-  if ( htab->table[h] == NULL )
+  if ( hstab->table[h] == NULL )
     return 0;
 
-  it = htab->table[h]->first;
+  it = hstab->table[h]->first;
 
   /* Remove the first node in the chain? */
-  if ( htab->cmp ( key, it->key ) == 0 ) {
-    htab->table[h]->first = it->next;
-
+  if ( hstab->cmp ( key, it->key ) == 0 ) {
+    hstab->table[h]->first = it->next;
     /* Release the node's memory */
-    htab->keyrel ( it->key );
-    htab->itemrel ( it->item );
+    hstab->keyrel ( it->key );
+    hstab->valrel ( it->val );
     free ( it );
-
     /* Remove the chain if it's empty */
-    if ( htab->table[h]->first == NULL ) {
-      free ( htab->table[h] );
-      htab->table[h] = NULL;
+    if ( hstab->table[h]->first == NULL ) {
+      free ( hstab->table[h] );
+      hstab->table[h] = NULL;
     }
     else
-      --htab->table[h]->size;
+      --hstab->table[h]->size;
   }
   else {
     /* Search for the node */
     while ( it->next != NULL ) {
-      if ( htab->cmp ( key, it->next->key ) == 0 )
+      if ( hstab->cmp ( key, it->next->key ) == 0 )
         break;
 
       it = it->next;
@@ -227,17 +230,17 @@ int jsw_herase ( jsw_hash_t *htab, void *key )
     it->next = it->next->next;
 
     /* Release the node's memory */
-    htab->keyrel ( save->key );
-    htab->itemrel ( save->item );
+    hstab->keyrel ( save->key );
+    hstab->valrel ( save->val );
     free ( save );
 
-    --htab->table[h]->size;
+    --hstab->table[h]->size;
   }
 
   /* Erasure invalidates traversal markers */
-  jsw_hreset ( htab );
+  hs_reset ( hstab );
 
-  --htab->size;
+  --hstab->size;
 
   return 1;
 }
@@ -247,74 +250,70 @@ int jsw_herase ( jsw_hash_t *htab, void *key )
   
   Returns: non-zero for success, zero for failure
 */
-int jsw_hresize ( jsw_hash_t *htab, size_t new_size )
+int hs_resize (hs_table* hstab, size_t new_size )
 {
-  jsw_hash_t *new_htab;
-  jsw_node_t *it;
+  hs_table *new_hstab;
+  hs_node *it;
   size_t i;
 
   /* Build a new hash table, then assign it to the old one */
-  new_htab = jsw_hnew ( new_size, htab->hash, htab->cmp,
-    htab->keydup, htab->itemdup, htab->keyrel, htab->itemrel );
+  new_hstab = hs_new ( new_size, hstab->hash, hstab->cmp,
+    hstab->keydup, hstab->valdup, hstab->keyrel, hstab->valrel );
 
-  if ( new_htab == NULL )
+  if ( new_hstab == NULL )
     return 0;
 
-  for ( i = 0; i < htab->capacity; i++ ) {
-    if ( htab->table[i] == NULL )
+  for ( i = 0; i < hstab->capacity; i++ ) {
+    if ( hstab->table[i] == NULL )
       continue;
 
-    for ( it = htab->table[i]->first; it != NULL; it = it->next )
-      jsw_hinsert ( new_htab, it->key, it->item );
+    for ( it = hstab->table[i]->first; it != NULL; it = it->next )
+      hs_insert ( new_hstab, it->key, it->val );
   }
 
   /* A hash table holds copies, so release the old table */
-  jsw_hdelete ( htab );
-  htab = new_htab;
+  hs_delete ( hstab );
+  hstab = new_hstab;
 
   return 1;
 }
 
 /* Reset the traversal markers to the beginning */
-void jsw_hreset ( jsw_hash_t *htab )
+void hs_reset ( hs_table* hstab )
 {
   size_t i;
-
-  htab->curri = 0;
-  htab->currl = NULL;
-
+  hstab->curri = 0;
+  hstab->currl = NULL;
   /* Find the first non-empty bucket */
-  for ( i = 0; i < htab->capacity; i++ ) {
-    if ( htab->table[i] != NULL )
+  for ( i = 0; i < hstab->capacity; i++ ) {
+    if ( hstab->table[i] != NULL )
       break;
   }
-
-  htab->curri = i;
-
+  hstab->curri = i;
   /* Set the link marker if the table was not empty */
-  if ( i != htab->capacity )
-    htab->currl = htab->table[i]->first;
+  if ( i != hstab->capacity )
+    hstab->currl = hstab->table[i]->first;
 }
 
 /* Traverse forward by one key */
-int jsw_hnext ( jsw_hash_t *htab )
+int hs_next ( hs_table* hstab )
 {
-  if ( htab->currl != NULL ) {
-    htab->currl = htab->currl->next;
+  if ( hstab->currl != NULL ) {
+    hstab->currl = hstab->currl->next;
 
     /* At the end of the chain? */
-    if ( htab->currl == NULL ) {
+    if ( hstab->currl == NULL ) {
       /* Find the next chain */
-      while ( ++htab->curri < htab->capacity ) {
-        if ( htab->table[htab->curri] != NULL )
+      while ( ++hstab->curri < hstab->capacity ) {
+        if ( hstab->table[hstab->curri] != NULL )
           break;
       }
 
       /* No more chains? */
-      if ( htab->curri == htab->capacity )
+      if ( hstab->curri == hstab->capacity )
         return 0;
 
-      htab->currl = htab->table[htab->curri]->first;
+      hstab->currl = hstab->table[hstab->curri]->first;
     }
   }
 
@@ -322,41 +321,42 @@ int jsw_hnext ( jsw_hash_t *htab )
 }
 
 /* Get the current key */
-const void *jsw_hkey ( jsw_hash_t *htab )
+const void* hs_key ( hs_table *hstab )
 {
-  return htab->currl != NULL ? htab->currl->key : NULL;
+  return hstab->currl != NULL ? hstab->currl->key : NULL;
 }
 
 /* Get the current item */
-void *jsw_hitem ( jsw_hash_t *htab )
+void *hs_item ( hs_table *hstab )
 {
-  return htab->currl != NULL ? htab->currl->item : NULL;
+  return hstab->currl != NULL ? hstab->currl->val : NULL;
 }
 
 /* Current number of items in the table */
-size_t jsw_hsize ( jsw_hash_t *htab )
+size_t hs_size (hs_table* hstab )
 {
-  return htab->size;
+  return hstab->size;
 }
 
 /* Total allowable number of items without resizing */
-size_t jsw_hcapacity ( jsw_hash_t *htab )
+size_t hs_capacity (hs_table* hstab )
 {
-  return htab->capacity;
+  return hstab->capacity;
 }
 
+#if 0
 /* Get statistics for the hash table */
-jsw_hstat_t *jsw_hstat ( jsw_hash_t *htab )
+hs_stat_t *hs_stat ( hs_table *hstab )
 {
-  jsw_hstat_t *stat;
+  hs_stat_t *stat;
   double sum = 0, used = 0;
   size_t i;
 
   /* No stats for an empty table */
-  if ( htab->size == 0 )
+  if ( hstab->size == 0 )
     return NULL;
 
-  stat = (jsw_hstat_t *)malloc ( sizeof *stat );
+  stat = (hs_stat_t *)malloc ( sizeof *stat );
 
   if ( stat == NULL )
     return NULL;
@@ -364,22 +364,23 @@ jsw_hstat_t *jsw_hstat ( jsw_hash_t *htab )
   stat->lchain = 0;
   stat->schain = (size_t)-1;
 
-  for ( i = 0; i < htab->capacity; i++ ) {
-    if ( htab->table[i] != NULL ) {
-      sum += htab->table[i]->size;
+  for ( i = 0; i < hstab->capacity; i++ ) {
+    if ( hstab->table[i] != NULL ) {
+      sum += hstab->table[i]->size;
 
       ++used; /* Non-empty buckets */
 
-      if ( htab->table[i]->size > stat->lchain )
-        stat->lchain = htab->table[i]->size;
+      if ( hstab->table[i]->size > stat->lchain )
+        stat->lchain = hstab->table[i]->size;
 
-      if ( htab->table[i]->size < stat->schain )
-        stat->schain = htab->table[i]->size;
+      if ( hstab->table[i]->size < stat->schain )
+        stat->schain = hstab->table[i]->size;
     }
   }
 
-  stat->load = used / htab->capacity;
+  stat->load = used / hstab->capacity;
   stat->achain = sum / used;
 
   return stat;
 }
+#endif 

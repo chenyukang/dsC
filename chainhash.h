@@ -15,7 +15,7 @@ extern "C" {
 #include <stddef.h>
 #endif
 
-typedef struct jsw_hash jsw_hash_t;
+typedef struct _hash_table hs_table;
 
 /* Application specific hash function */
 typedef unsigned (*hash_f) ( const void *key );
@@ -27,82 +27,83 @@ typedef int      (*cmp_f) ( const void *a, const void *b );
 typedef void    *(*keydup_f) ( const void *key );
 
 /* Application specific data copying function */
-typedef void    *(*itemdup_f) ( const void *item );
+typedef void    *(*valdup_f) ( const void *item );
 
 /* Application specific key deletion function */
 typedef void     (*keyrel_f) ( void *key );
 
 /* Application specific data deletion function */
-typedef void     (*itemrel_f) ( void *item );
+typedef void     (*valrel_f) ( void *item );
 
+#if 0
 typedef struct jsw_hstat {
   double load;            /* Table load factor: (M chains)/(table size) */
   double achain;          /* Average chain length */
   size_t lchain;          /* Longest chain */
   size_t schain;          /* Shortest non-empty chain */
 } jsw_hstat_t;
-
+#endif
 /*
   Create a new hash table with a capacity of size, and
   user defined functions for handling keys and items.
 
   Returns: An empty hash table, or NULL on failure.
 */
-jsw_hash_t  *jsw_hnew ( size_t size, hash_f hash, cmp_f cmp,
-                       keydup_f keydup, itemdup_f itemdup,
-                       keyrel_f keyrel, itemrel_f itemrel );
+hs_table* hs_new ( size_t size, hash_f hash, cmp_f cmp,
+                       keydup_f keydup, valdup_f itemdup,
+                       keyrel_f keyrel, valrel_f itemrel );
 
 /* Release all memory used by the hash table */
-void         jsw_hdelete ( jsw_hash_t *htab );
+void         hs_delete ( hs_table *hstab );
 
 /*
   Find an item with the selected key
 
   Returns: The item, or NULL if not found
 */
-void        *jsw_hfind ( jsw_hash_t *htab, void *key );
+void        *hs_find ( hs_table *hstab, void *key );
 
 /*
   Insert an item with the selected key
 
   Returns: non-zero for success, zero for failure
 */
-int          jsw_hinsert ( jsw_hash_t *htab, void *key, void *item );
+int          hs_insert ( hs_table *hstab, void *key, void *item );
 
 /*
   Remove an item with the selected key
 
   Returns: non-zero for success, zero for failure
 */
-int          jsw_herase ( jsw_hash_t *htab, void *key );
+int          hs_erase ( hs_table *hstab, void *key );
 
 /*
   Grow or shrink the table, this is a slow operation
   
   Returns: non-zero for success, zero for failure
 */
-int          jsw_hresize ( jsw_hash_t *htab, size_t new_size );
+int          hs_resize ( hs_table *hstab, size_t new_size );
 
 /* Reset the traversal markers to the beginning */
-void         jsw_hreset ( jsw_hash_t *htab );
+void         hs_reset ( hs_table *hstab );
 
 /* Traverse forward by one key */
-int          jsw_hnext ( jsw_hash_t *htab );
+int          hs_next ( hs_table *hstab );
 
 /* Get the current key */
-const void  *jsw_hkey ( jsw_hash_t *htab );
+const void  *hs_key ( hs_table *hstab );
 
 /* Get the current item */
-void        *jsw_hitem ( jsw_hash_t *htab );
+void        *hs_item ( hs_table *hstab );
 
 /* Current number of items in the table */
-size_t       jsw_hsize ( jsw_hash_t *htab );
+size_t       hs_size ( hs_table *hstab );
 
 /* Total allowable number of items without resizing */
-size_t       jsw_hcapacity ( jsw_hash_t *htab );
+size_t       hs_capacity ( hs_table *hstab );
 
 /* Get statistics for the hash table */
-jsw_hstat_t *jsw_hstat ( jsw_hash_t *htab );
+//hs_stat_t *jsw_hstat ( hs_table *hstab );
 
 #ifdef __cplusplus
 }
