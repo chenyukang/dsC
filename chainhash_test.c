@@ -33,14 +33,15 @@ unsigned int_hash(const void* a)
     key = key ^ (key >> 16); 
     return key;
 }
+#endif
 
-unsigned int_hash(const void* a)
+unsigned int_hash1(const void* a)
 {
     return (*(int*)a) % 10000000 + 1;
 }
-#endif
 
-unsigned int_hash(const void* a)
+//#if 0
+unsigned int_hash2(const void* a)
 {
     u32 key = (u32)(*(int*)a);
     key = (key+0x7ed55d16) + (key<<12); 
@@ -51,6 +52,7 @@ unsigned int_hash(const void* a)
     key = (key^0xb55a4f09) ^ (key>>16);  
     return key;
 }
+//#endif
 
 int int_cmp(const void* a, const void* b)
 {
@@ -73,19 +75,24 @@ void int_rel(void* key)
 
 int main()
 {
-    hs_table* hs = hs_new(100, &int_hash, &int_cmp, &int_dup, &int_dup,
+    hs_table* hs = hs_new(100, &int_hash2, &int_cmp, &int_dup, &int_dup,
                                &int_rel, &int_rel);
 
     assert(hs);
     int k;
-    for(k=0; k<100000; k++)
+    srand(time(NULL));
+    for(k=0; k<100000000; k++)
     {
-        //printf("insert: %d\n", k);
-        int val = k+1;
-        hs_insert(hs, &k, &val);
-        void* v = hs_find(hs, &k);
+        int key = rand()%100000;
+        //printf("insert: %d\n", key);
+        int val = key+1;
+        hs_insert(hs, &key, &val);
+        void* v = hs_find(hs, &key);
         assert( v );
         assert(*(int*)v == val);
+
+        hs_erase(hs, &key);
+        assert(hs_find(hs, &key) == NULL);
 
 #if 0
         val = k-1;
