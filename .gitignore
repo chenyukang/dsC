@@ -1,1 +1,3 @@
 cscope.out
+*.o
+*.exe
