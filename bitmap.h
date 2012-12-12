@@ -9,7 +9,6 @@
 #if !defined(BITMAP_H)
 #define BITMAP_H
 
-
 typedef unsigned int u32;
 
 typedef struct _bitmap{

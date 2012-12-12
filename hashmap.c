@@ -151,7 +151,7 @@ check_full(hashmap* hsmap)
     return 1;
 }
 
-
+/* release the memory for a hashtable*/
 void
 hsmap_del(hashmap* hsmap)
 {

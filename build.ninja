@@ -1,0 +1,31 @@
+cc=gcc
+cflags= -g -c
+
+rule cc
+     command =	$cc $cflags $in -o $out
+
+rule link
+     command = $cc $in -o $out
+
+rule cleanup
+     command = rm -rf *.exe *.o
+
+build bitmap.o         : cc bitmap.c 
+build chainhash.o      : cc chainhash.c       
+build hashmap.o        : cc hashmap.c       
+build jsw_rand.o       : cc jsw_rand.c  
+build skip_list_test.o : cc skip_list_test.c
+build bitmap_test.o    : cc bitmap_test.c
+build chainhash_test.o : cc chainhash_test.c  
+build hashmap_test.o   : cc hashmap_test.c  
+build jsw_slib.o       : cc hashmap_test.c  
+build skiplist.o       : cc skiplist.c
+
+build skip_list_test.exe : link skip_list_test.o skiplist.o
+build chainhash_test.exe : link chainhash_test.o chainhash.o
+build hashmap_test.exe   : link hashmap_test.o hashmap.o
+build bitmap_test.exe    : link bitmap_test.o bitmap.o
+
+build all:  phony || skip_list_test.exe chainhash_test.exe hashmap_test.exe bitmap_test.exe
+
+build clean: cleanup 

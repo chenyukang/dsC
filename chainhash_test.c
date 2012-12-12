@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <time.h>
 
 
 typedef unsigned int u32;

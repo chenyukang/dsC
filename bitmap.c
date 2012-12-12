@@ -21,6 +21,7 @@
 /* ffs: if ret == 0 : no one bit found
    return index is begin with 1,
    this maybe just work in x86 platform */
+#if 0
 static inline int _first_onebit(u32 x)
 {
     if (!x) {
@@ -32,7 +33,25 @@ static inline int _first_onebit(u32 x)
         return ret;
     }
 }
+#endif
 
+static inline int
+_first_onebit(u32 x) {
+    if (!x) {
+        return 0;
+    }
+    else {
+        int idx = 1;
+        while(x >0) {
+            if(x%2)
+                return idx;
+            else {
+                idx++;
+                x = x>>1;
+            }
+        }
+    }
+}
 
 bitmap* bitmap_new(u32 size)
 {
