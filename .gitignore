@@ -1,3 +1,4 @@
 cscope.out
 *.o
 *.exe
+.ninja_log
