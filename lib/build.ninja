@@ -37,31 +37,14 @@ rule CLEAN_RULE
 
 
 # =========== COMPILER THESE SOURCES ============
-build obj/bitmap.o: C_RULE bitmap.c
-    DESC = C bitmap.c
-build obj/chainhash.o: C_RULE chainhash.c
-    DESC = C chainhash.c
-build obj/hashmap.o: C_RULE hashmap.c
-    DESC = C hashmap.c
-build obj/jsw_rand.o: C_RULE jsw_rand.c
-    DESC = C jsw_rand.c
-build obj/jsw_slib.o: C_RULE jsw_slib.c
-    DESC = C jsw_slib.c
-build obj/skiplist.o: C_RULE skiplist.c
-    DESC = C skiplist.c
-build obj/liball.a : AR_RULE obj/bitmap.o obj/chainhash.o $
-                 obj/hashmap.o obj/jsw_rand.o $
-                 obj/jsw_slib.o obj/skiplist.o $
-                 
+build obj/backtrace.o: C_RULE backtrace.c
+    DESC = C backtrace.c
+build obj/liball.a : AR_RULE obj/backtrace.o
 
 #############################################
 # The main all target.
-build obj/bitmap_test.exe :  C_LINK_RULE obj/liball.a bitmap_test.c
-build obj/chainhash_test.exe :  C_LINK_RULE obj/liball.a chainhash_test.c
-build obj/gcc_hashmap.exe : CC_LINK_RULE obj/liball.a gcc_hashmap.cpp
-build obj/hashmap_test.exe :  C_LINK_RULE obj/liball.a hashmap_test.c
-build obj/skiplist_test.exe :  C_LINK_RULE obj/liball.a skiplist_test.c
-build all: phony  obj/liball.a obj/bitmap_test.exe  obj/chainhash_test.exe  obj/gcc_hashmap.exe  obj/hashmap_test.exe  obj/skiplist_test.exe 
+build obj/test.exe :  C_LINK_RULE obj/liball.a test.c
+build all: phony  obj/liball.a  obj/test.exe 
 
 #############################################
 # Make the all target the default.
